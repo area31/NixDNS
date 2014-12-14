@@ -1,0 +1,31 @@
+# Conf default do nixdns
+#
+
+HOME="/opt/hackstore/nixdns"
+KEY="Karquivodechavebindxptyxxxxxxxxxxxxxxxx.key"
+HOST="exemplo"
+ZONE="noip.nixdns.com.br"
+NS="noip.nixdns.com.br"
+NTPSERVERS="a.st1.ntp.br b.st1.ntp.br c.st1.ntp.br d.st1.ntp.br a.ntp.br b.ntp.br c.ntp.br gps.ntp.br"
+
+
+# Como o nixdns deverá descobrir o IP:
+#   - device: Envia o IP da interface configurada em ${DEVICE}. Não aconselhável quando o host está atrás de NAT.
+#   - nixdns: Consulta o ip.nixdns.com.br
+#   - ipecho: Consulta o ipecho.net
+#   - nat-nixdns: Consulta o ip.nixdns.com.br utilizando uma interface específica via variavel ${DEVICE}
+#   - nat-ipecho: Consulta o ipecho.net utilizando uma interface específica via variavel ${DEVICE}
+#
+DISCOVER_IP="nixdns"
+
+
+DEVICE="eth1"   # Interface da WAN em caso de estar atrás de NAT com uso de mais de um link
+
+
+TTL="60"        # Em segundos. Default 1 minuto (60s)
+
+
+FULLHOST="${HOST}.${ZONE}"
+KEYFILE="${HOME}/${KEY}"
+LOG="${HOME}/nixdns-update.log"
+

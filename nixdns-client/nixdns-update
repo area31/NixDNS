@@ -1,0 +1,109 @@
+#!/bin/bash
+# Script para atualizacao de IP com DNS DINAMICO. 
+# Necessario bind-utils (comandos nsupdate e host) e curl.
+# 
+# NIXDNS - DNS Dinâmico
+#
+###@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@###
+
+# Incluir no crontab
+
+## NIXDNS
+#*/2 * * * *     root    /opt/hackstore/nixdns/nixdns-update &> /dev/null
+
+###@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@###
+
+VERSAO="2.0"
+CONF="/opt/hackstore/nixdns/nixdns.conf"
+
+if [  -e ${CONF} ]; then
+	source ${CONF}
+else
+	echo "Configure o arquivo de configuração \"${CONF}\""
+	exit 1
+fi
+
+##@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@##
+
+if [ $DISCOVER_IP == "device" ]; then
+	if [ ! -z ${DEVICE} ]; then  
+		CLIENTIP=$(ip addr show scope global ${DEVICE} | grep inet | awk '{print $2}' | sed "s/\/.*//g" | head -1)
+	else
+		echo "Configure a variável DEVICE. EX: DEVICE=\"eth1\""
+		exit 1
+	fi
+elif [ ${DISCOVER_IP} == "nat-nixdns" ]; then
+    CLIENTIP=$(curl -s http://ip.nixdns.com.br/plain/ --interface ${DEVICE})
+elif [ ${DISCOVER_IP} == "nixdns" ]; then
+    CLIENTIP=$(curl -s http://ip.nixdns.com.br/plain/)
+elif [ ${DISCOVER_IP} == "nat-ipecho" ]; then
+    CLIENTIP=$(curl -s http://ipecho.net/plain --interface ${DEVICE})
+elif [ ${DISCOVER_IP} == "ipecho" ]; then
+    CLIENTIP=$(curl -s http://ipecho.net/plain)
+fi
+
+
+# Checa se é necessário atualizar o nixdns
+host ${FULLHOST} > /dev/null
+if [ "$?" -ne 0 ]; then
+	echo -e "Erro ao obter ip antigo de NIXDNS \"${FULLHOST}\""
+else
+	IPOLD="NULL"
+	IPOLD=$(host ${FULLHOST} |cut -d" " -f4)
+	if [ ${IPOLD} == ${CLIENTIP} ]; then
+		echo "NIXDNS \"${FULLHOST}\" não precisa ser atualizado. IP atual: ${IPOLD}"
+		exit 0
+	fi
+fi
+#############################################################################
+
+# Caso seja necessário atualizar o NIXDNS...
+
+### Checa se as variaveis estão ok...
+if [ -z ${TTL} ]; then  
+	echo "Configure a variável TTL. EX: TTL=\"60\""
+	exit 1
+fi
+
+
+
+##@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@##
+##@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@##
+update_nixdns() {
+nsupdate -k ${KEYFILE} 2>> $LOG << EOF
+server ${NS}
+zone ${ZONE}
+update delete ${FULLHOST} A
+update add ${FULLHOST} ${TTL} A ${CLIENTIP}
+send
+EOF
+}
+##@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@##
+##@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@##
+
+update_nixdns
+if [ "$?" -ne 0 ]; then
+	echo "ERRO AO ATUALIZAR NIXDNS \"${FULLHOST}\" PARA IP \"${CLIENTIP}\". TENTANDO ATUALIZAR DATA E HORA..."
+	echo -e "\n$(date +'%Y-%m-%d') - $(date +'%H:%M:%S'): ERRO AO ATUALIZAR NIXDNS \"${FULLHOST}\" PARA IP \"${CLIENTIP}\". TENTANDO ATUALIZAR DATA E HORA..." >> ${LOG}
+	ntpdate ${NTPSERVERS} >> ${LOG} 2>&1
+	if [ "$?" -ne 0 ]; then
+		echo "ERRO AO ATUALIZAR DATA E HORA."
+		echo "$(date +'%Y-%m-%d') - $(date +'%H:%M:%S'): ERRO AO ATUALIZAR DATA E HORA." >> ${LOG}
+	else
+		echo "DATA E HORA E HORA ATUALIZADOS. $(date +'%Y-%m-%d') - $(date +'%H:%M:%S')"
+		echo "$(date +'%Y-%m-%d') - $(date +'%H:%M:%S'): DATA E HORA E HORA ATUALIZADOS." >> ${LOG}
+		hwclock -w
+	fi
+	update_nixdns
+	if [ "$?" -ne 0 ]; then
+		echo "ERRO AO ATUALIZAR  NIXDNS \"${FULLHOST}\" MESMO APÓS ATUALIZAR DATA E HORA. :("
+		echo "$(date +'%Y-%m-%d') - $(date +'%H:%M:%S'): ERRO AO ATUALIZAR  NIXDNS \"${FULLHOST}\" MESMO APÓS ATUALIZAR DATA E HORA. :(" >> ${LOG}
+    		ERROR=1;
+	else
+		echo "SUCESSO AO ATUALIZAR NIXDNS \"${FULLHOST}\" APÓS ATUALIZAR DATA E HORA. IP NOVO: ${CLIENTIP}" 
+		echo -e "\n$(date +'%Y-%m-%d') - $(date +'%H:%M:%S'): SUCESSO AO ATUALIZAR NIXDNS \"${FULLHOST}\" APÓS ATUALIZAR DATA E HORA. IP NOVO: ${CLIENTIP}" >> ${LOG}
+	fi
+else
+	echo "SUCESSO AO ATUALIZAR  NIXDNS \"${FULLHOST}\" IP NOVO: ${CLIENTIP}"
+	echo -e "\n$(date +'%Y-%m-%d') - $(date +'%H:%M:%S'): SUCESSO AO ATUALIZAR  NIXDNS \"${FULLHOST}\" IP NOVO: ${CLIENTIP}" >> ${LOG}
+fi
