@@ -1,0 +1,24 @@
+#!/bin/bash
+
+CONF="/opt/hackstore/nixdns/nixdns.conf"
+
+if [  -e ${CONF} ]; then
+	source ${CONF}
+else
+	echo "Configure o arquivo de configuração \"${CONF}\""
+	exit 1
+fi
+
+echo -e "\nnixdns-update ${VERSAO}\nUsage: nixdns-update [options]\n\nOptions:\n	-f, --force		Force update nixdns\n	-h, --help		Show this menu\n"
+
+#tcpdump version 4.7.4
+#libpcap version 1.7.4
+#OpenSSL 1.0.2d 9 Jul 2015
+#Usage: tcpdump [-aAbdDefhHIJKlLnNOpqRStuUvxX#] [ -B size ] [ -c count ]
+#                [ -C file_size ] [ -E algo:secret ] [ -F file ] [ -G seconds ]
+#                [ -i interface ] [ -j tstamptype ] [ -M secret ] [ --number ]
+#                [ -Q in|out|inout ]
+#                [ -r file ] [ -s snaplen ] [ --time-stamp-precision precision ]
+#                [ --immediate-mode ] [ -T type ] [ --version ] [ -V file ]
+#                [ -w file ] [ -W filecount ] [ -y datalinktype ] [ -z command ]
+#                [ -Z user ] [ expression ]

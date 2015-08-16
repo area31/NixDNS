@@ -1,6 +1,7 @@
 # Conf default do nixdns
 #
 
+VERSAO="3.0"
 HOME="/opt/hackstore/nixdns"
 KEY="Karquivodechavebindxptyxxxxxxxxxxxxxxxx.key"
 HOST="exemplo"
