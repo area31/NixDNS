@@ -112,12 +112,16 @@ if [ "$?" -ne 0 ]; then
 	echo -e "Erro ao obter ip antigo de NIXDNS \"${FULLHOST}\""
 else
 	IPOLD="NULL"
-	IPOLD=$(host ${FULLHOST} |cut -d" " -f4)
-	if [ ${IPOLD} == ${CLIENTIP} ]; then
-		echo "NIXDNS \"${FULLHOST}\" não precisa ser atualizado. IP atual: ${IPOLD}"
-		exit 0
+	IPOLD=$(host ${FULLHOST} | awk '{print $4}')
+	if [ -z ${IPOLD} ]; then
+		IPOLD=127.0.0.1
 	fi
+		if [ ${IPOLD} == "${CLIENTIP}" ]; then
+			echo "NIXDNS \"${FULLHOST}\" não precisa ser atualizado. IP atual: ${IPOLD}"
+			exit 0
+		fi
 fi
+
 #############################################################################
 
 # Caso seja necessário atualizar o NIXDNS...
